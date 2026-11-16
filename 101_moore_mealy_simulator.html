@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>101 aniqlagich — Moore va Mealy simulyatori</title>
+<style>
+:root{--bg:#0b1220;--panel:#111c30;--line:#263650;--text:#e5edf8;--muted:#9fb0c8;--blue:#3b82f6;--teal:#2dd4bf;--gold:#fbbf24}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#08111f,#101d32);color:var(--text);font:16px/1.5 system-ui,Arial,sans-serif}
+.wrap{max-width:1120px;margin:auto;padding:28px 18px 60px}h1{font-size:clamp(26px,4vw,40px);margin:0 0 8px}h2{font-size:21px;margin:0 0 14px}.sub{color:var(--muted);margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}.card{background:rgba(17,28,48,.95);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 12px 32px #0003}
+label{display:block;color:var(--muted);font-size:14px;margin:10px 0 6px}input,select{width:100%;background:#091426;color:var(--text);border:1px solid #344762;border-radius:9px;padding:12px;font-size:17px}
+button{border:0;border-radius:9px;padding:11px 15px;background:var(--blue);color:white;font-weight:700;cursor:pointer;margin:8px 6px 0 0}button.secondary{background:#334155}button:disabled{opacity:.4;cursor:not-allowed}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.bit{display:inline-grid;place-items:center;width:36px;height:40px;border-radius:8px;margin:3px;background:#25344c;font-weight:800}.bit.active{background:var(--teal);color:#06251f}.bit.detect{outline:2px solid var(--gold)}
+.states{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.state{border:1px solid #3a4d69;background:#0b172a;padding:12px 16px;border-radius:12px;min-width:90px;text-align:center}.state.current{border:2px solid var(--teal);box-shadow:0 0 0 3px #2dd4bf22}.state small{display:block;color:var(--muted)}
+.result{font-size:25px;letter-spacing:5px;font-weight:800;color:var(--teal);word-break:break-all}.muted{color:var(--muted)}table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid #344762;padding:9px;text-align:center}th{background:#1c3150}tr.current-row{background:#164e6370}.note{border-left:3px solid var(--teal);padding:10px 14px;background:#0c2630;color:#c7f9f1;border-radius:6px}
+@media(max-width:600px){.wrap{padding:18px 12px}.card{padding:15px}}
+</style></head>
+<body><main class="wrap">
+<h1>“101” aniqlagich simulyatori</h1>
+<p class="sub">Moore va Mealy chekli avtomatlarini bitma-bit sinab ko‘ring. Ketma-ketliklar ustma-ust kelishi (overlap) mumkin.</p>
+<div class="grid">
+<section class="card">
+<h2>1. Kirish bitlarini kiriting</h2>
+<label for="bits">Faqat 0 va 1 dan iborat bitlar ketma-ketligi</label>
+<input id="bits" value="101101" maxlength="80" autocomplete="off">
+<div class="controls"><button id="run">To‘liq ishlatish</button><button id="step" class="secondary">Keyingi bit</button><button id="reset" class="secondary">Qayta boshlash</button></div>
+<p class="muted" id="progress">0 / 6 bit qayta ishlandi</p>
+</section>
+<section class="card">
+<h2>2. Avtomat turini tanlang</h2>
+<label for="mode">Ko‘rinish</label><select id="mode"><option value="both">Moore va Mealy birga</option><option value="moore">Faqat Moore</option><option value="mealy">Faqat Mealy</option></select>
+<p class="note">Moore: chiqish holatga bog‘liq. Mealy: chiqish joriy holat va kirishga bog‘liq.</p>
+</section></div>
+<div class="grid">
+<section class="card" id="mooreCard"><h2>Moore avtomati — 4 holat</h2><div class="states" id="mooreStates"></div>
+<p>Joriy holat: <b id="mooreState">S0</b> · Chiqish: <b id="mooreOut">0</b></p><p class="muted">Holat chiqishi: S0=0, S1=0, S2=0, S3=1.</p></section>
+<section class="card" id="mealyCard"><h2>Mealy avtomati — 3 holat</h2><div class="states" id="mealyStates"></div>
+<p>Joriy holat: <b id="mealyState">S0</b> · Oxirgi chiqish: <b id="mealyOut">0</b></p><p class="muted">O‘tish yorlig‘i: keyingi holat / chiqish.</p></section></div>
+<section class="card"><h2>3. Natijalar</h2><p class="muted">Chiqish bitlari qadamlar bo‘yicha ko‘rsatiladi.</p><div>Moore chiqishi</div><div class="result" id="mooreResult">—</div><div style="margin-top:12px">Mealy chiqishi</div><div class="result" id="mealyResult">—</div><p id="found" class="note">Hozircha bitlar qayta ishlanmadi.</p></section>
+<section class="card"><h2>4. Qadamlar jadvali</h2><div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Kirish</th><th>Moore holati</th><th>Moore Y</th><th>Mealy holati</th><th>Mealy Y</th><th>101 topildimi?</th></tr></thead><tbody id="log"><tr><td colspan="7" class="muted">Simulyatsiyani boshlang.</td></tr></tbody></table></div></section>
+<section class="card"><h2>5. O‘tish jadvallari</h2><div class="grid">
+<div><h3>Moore</h3><table><tr><th>Holat</th><th>X=0</th><th>X=1</th><th>Y</th></tr><tr><td>S0</td><td>S0</td><td>S1</td><td>0</td></tr><tr><td>S1</td><td>S2</td><td>S1</td><td>0</td></tr><tr><td>S2</td><td>S0</td><td>S3</td><td>0</td></tr><tr><td>S3</td><td>S2</td><td>S1</td><td>1</td></tr></table></div>
+<div><h3>Mealy</h3><table><tr><th>Holat</th><th>X=0</th><th>X=1</th></tr><tr><td>S0</td><td>S0 / 0</td><td>S1 / 0</td></tr><tr><td>S1</td><td>S2 / 0</td><td>S1 / 0</td></tr><tr><td>S2</td><td>S0 / 0</td><td>S1 / 1</td></tr></table></div></div>
+<p class="muted">Eslatma: bu misolda ikkala avtomat ham har bir kirish taktiga bittadan chiqish beradi. Moore’da S3 holatining chiqishi 1, Mealy’da esa S2 holatidan 1 kirganda o‘tish chiqishi 1 bo‘ladi.</p></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const mooreNext={S0:{0:"S0",1:"S1"},S1:{0:"S2",1:"S1"},S2:{0:"S0",1:"S3"},S3:{0:"S2",1:"S1"}};
+const mooreY={S0:"0",S1:"0",S2:"0",S3:"1"};
+const mealyNext={S0:{0:["S0","0"],1:["S1","0"]},S1:{0:["S2","0"],1:["S1","0"]},S2:{0:["S0","0"],1:["S1","1"]}};
+let bits="",index=0,ms="S0",es="S0",mo="",me="",logs=[];
+function drawStates(){
+ const mode=$("mode").value;
+ $("mooreCard").style.display=mode==="mealy"?"none":"block";
+ $("mealyCard").style.display=mode==="moore"?"none":"block";
+ $("mooreStates").innerHTML=["S0","S1","S2","S3"].map(s=>`<div class="state ${ms===s?"current":""}"><b>${s}</b><small>Y=${mooreY[s]}</small></div>`).join("");
+ $("mealyStates").innerHTML=["S0","S1","S2"].map(s=>`<div class="state ${es===s?"current":""}"><b>${s}</b><small>${s==="S2"?"10":s==="S1"?"1":"—"}</small></div>`).join("");
+ $("mooreState").textContent=ms;$("mooreOut").textContent=mooreY[ms];
+ $("mealyState").textContent=es;$("mealyOut").textContent=logs.length?logs[logs.length-1].my:"0";
+ $("mooreResult").textContent=mo||"—";$("mealyResult").textContent=me||"—";
+ $("progress").textContent=`${index} / ${bits.length} bit qayta ishlandi`;
+ $("step").disabled=index>=bits.length;
+ $("run").disabled=index>=bits.length;
+ $("found").textContent=`Topilgan “101” soni: ${logs.filter(x=>x.hit).length}. ${index===bits.length&&index>0?"Kirish to‘liq qayta ishlandi.":"Keyingi bitni bosib davom eting."}`;
+ $("log").innerHTML=logs.length?logs.map((r,i)=>`<tr class="${i===logs.length-1?"current-row":""}"><td>${i+1}</td><td>${r.bit}</td><td>${r.ms}</td><td>${r.myMoore}</td><td>${r.es}</td><td>${r.my}</td><td>${r.hit?"✓ Ha":"—"}</td></tr>`).join(""):`<tr><td colspan="7" class="muted">Simulyatsiyani boshlang.</td></tr>`;
+}
+function oneStep(){
+ if(index>=bits.length)return;
+ const bit=bits[index];
+ ms=mooreNext[ms][bit]; const myMoore=mooreY[ms];
+ const trans=mealyNext[es][bit];es=trans[0];const my=trans[1];
+ const hit=bit==="1"&&index>=2&&bits.slice(index-2,index+1)==="101";
+ mo+=myMoore;me+=my;
+ logs.push({bit,ms,myMoore,es,my,hit});index++;drawStates();
+}
+function reset(){
+ const raw=$("bits").value.trim();
+ if(!/^[01]*$/.test(raw)){alert("Kiritishda faqat 0 va 1 bo‘lishi kerak.");return}
+ bits=raw;index=0;ms="S0";es="S0";mo="";me="";logs=[];drawStates();
+}
+$("run").onclick=()=>{while(index<bits.length)oneStep()};
+$("step").onclick=oneStep;
+$("reset").onclick=reset;
+$("mode").onchange=drawStates;
+$("bits").addEventListener("keydown",e=>{if(e.key==="Enter")reset()});
+reset();
+</script></body></html>
